@@ -12,11 +12,11 @@
 #define ERROR_PICKER_CANNOT_RUN_CAMERA_ON_SIMULATOR_KEY @"E_PICKER_CANNOT_RUN_CAMERA_ON_SIMULATOR"
 #define ERROR_PICKER_CANNOT_RUN_CAMERA_ON_SIMULATOR_MSG @"Cannot run camera on simulator"
 
-#define ERROR_PICKER_NO_CAMERA_PERMISSION_KEY @"E_PICKER_NO_CAMERA_PERMISSION"
-#define ERROR_PICKER_NO_CAMERA_PERMISSION_MSG @"User did not grant camera permission."
+#define ERROR_NO_CAMERA_PERMISSION_KEY @"E_NO_CAMERA_PERMISSION"
+#define ERROR_NO_CAMERA_PERMISSION_MSG @"User did not grant camera permission."
 
-#define ERROR_PICKER_UNAUTHORIZED_KEY @"E_PERMISSION_MISSING"
-#define ERROR_PICKER_UNAUTHORIZED_MSG @"Cannot access images. Please allow access if you want to be able to select images."
+#define ERROR_NO_LIBRARY_PERMISSION_KEY @"E_NO_LIBRARY_PERMISSION"
+#define ERROR_NO_LIBRARY_PERMISSION_MSG @"User did not grant library permission."
 
 #define ERROR_PICKER_CANCEL_KEY @"E_PICKER_CANCELLED"
 #define ERROR_PICKER_CANCEL_MSG @"User cancelled image selection"
@@ -145,7 +145,7 @@ RCT_EXPORT_METHOD(openCamera:(NSDictionary *)options
 #else
     [self checkCameraPermissions:^(BOOL granted) {
         if (!granted) {
-            self.reject(ERROR_PICKER_NO_CAMERA_PERMISSION_KEY, ERROR_PICKER_NO_CAMERA_PERMISSION_MSG, nil);
+            self.reject(ERROR_NO_CAMERA_PERMISSION_KEY, ERROR_NO_CAMERA_PERMISSION_MSG, nil);
             return;
         }
         
@@ -285,7 +285,7 @@ RCT_EXPORT_METHOD(openPicker:(NSDictionary *)options
     
     [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
         if (status != PHAuthorizationStatusAuthorized) {
-            self.reject(ERROR_PICKER_UNAUTHORIZED_KEY, ERROR_PICKER_UNAUTHORIZED_MSG, nil);
+            self.reject(ERROR_NO_LIBRARY_PERMISSION_KEY, ERROR_NO_LIBRARY_PERMISSION_MSG, nil);
             return;
         }
         
@@ -465,6 +465,7 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
     PHVideoRequestOptions *options = [[PHVideoRequestOptions alloc] init];
     options.version = PHVideoRequestOptionsVersionOriginal;
     options.networkAccessAllowed = YES;
+    options.deliveryMode = PHVideoRequestOptionsDeliveryModeHighQualityFormat;
     
     [manager
      requestAVAssetForVideo:forAsset
@@ -513,6 +514,8 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
         case 0x49:
         case 0x4D:
             return @"image/tiff";
+        case 0x00:
+            return @"image/heic";
     }
     return @"";
 }
@@ -527,14 +530,17 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
     options.networkAccessAllowed = YES;
     
     if ([[[self options] objectForKey:@"multiple"] boolValue]) {
-        NSMutableArray *selections = [[NSMutableArray alloc] init];
+        NSMutableArray *selections = [[NSMutableArray alloc] initWithCapacity: [assets count]];
+        for(int i = 0; i<[assets count]; i++) {
+            [selections addObject: [NSNull null]];
+        }
         
         [self showActivityIndicator:^(UIActivityIndicatorView *indicatorView, UIView *overlayView) {
             NSLock *lock = [[NSLock alloc] init];
             __block int processed = 0;
             
+            NSUInteger index = 0;
             for (PHAsset *phAsset in assets) {
-                
                 if (phAsset.mediaType == PHAssetMediaTypeVideo) {
                     [self getVideoAsset:phAsset completion:^(NSDictionary* video) {
                         dispatch_async(dispatch_get_main_queue(), ^{
@@ -548,14 +554,13 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
                                 }]];
                                 return;
                             }
-                            
-                            [selections addObject:video];
+                            [selections replaceObjectAtIndex: index withObject:video];
                             processed++;
                             [lock unlock];
                             
                             if (processed == [assets count]) {
                                 [indicatorView stopAnimating];
-                                [overlayView removeFromSuperview];
+                                 [overlayView removeFromSuperview];
                                 [imagePickerController dismissViewControllerAnimated:YES completion:[self waitAnimationEnd:^{
                                     self.resolve(selections);
                                 }]];
@@ -623,7 +628,7 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
                                         exif = [[CIImage imageWithData:imageData] properties];
                                     }
                                     
-                                    [selections addObject:[self createAttachmentResponse:filePath
+                                    [selections replaceObjectAtIndex: index withObject:[self createAttachmentResponse:filePath
                                                                                 withExif: exif
                                                                            withSourceURL:[sourceURL absoluteString]
                                                                      withLocalIdentifier: phAsset.localIdentifier
@@ -637,7 +642,7 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
                                                                                 withRect:CGRectNull
                                                                         withCreationDate:phAsset.creationDate
                                                                     withModificationDate:phAsset.modificationDate
-                                                           ]];
+                                                              ]];
                                 }
                                 processed++;
                                 [lock unlock];
@@ -654,6 +659,7 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
                             });
                         }];
                     }];
+                    index++;
                 }
             }
         }];
@@ -876,11 +882,11 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
             if (widthRatio > 0 && heightRatio > 0){
                 CGSize aspectRatio = CGSizeMake(widthRatio, heightRatio);
                 cropVC.customAspectRatio = aspectRatio;
-
             }
             cropVC.aspectRatioLockEnabled = ![[self.options objectForKey:@"freeStyleCropEnabled"] boolValue];
             cropVC.resetAspectRatioEnabled = !cropVC.aspectRatioLockEnabled;
         }
+
 
         cropVC.title = [[self options] objectForKey:@"cropperToolbarTitle"];
         cropVC.delegate = self;
@@ -920,6 +926,7 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
     // dispatch_async(dispatch_get_main_queue(), ^{
     //     [[self getRootVC] presentViewController:cropVC animated:FALSE completion:nil];
     // });
+        
 }
 #pragma mark - TOCropViewController Delegate
 - (void)cropViewController:(TOCropViewController *)cropViewController didCropToImage:(UIImage *)image withRect:(CGRect)cropRect angle:(NSInteger)angle {
