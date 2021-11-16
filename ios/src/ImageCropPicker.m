@@ -465,6 +465,7 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
     PHVideoRequestOptions *options = [[PHVideoRequestOptions alloc] init];
     options.version = PHVideoRequestOptionsVersionOriginal;
     options.networkAccessAllowed = YES;
+    options.deliveryMode = PHVideoRequestOptionsDeliveryModeHighQualityFormat;
     
     [manager
      requestAVAssetForVideo:forAsset
@@ -513,6 +514,8 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
         case 0x49:
         case 0x4D:
             return @"image/tiff";
+        case 0x00:
+             return @"image/heic";
     }
     return @"";
 }
