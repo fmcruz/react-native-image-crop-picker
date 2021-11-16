@@ -1,4 +1,4 @@
-package com.reactnative.ivpusic.imagepicker;
+ackage com.reactnative.ivpusic.imagepicker;
 
 import android.app.Activity;
 import android.content.Context;
@@ -55,34 +55,7 @@ class Compression {
         ExifInterface originalExif = new ExifInterface(originalImagePath);
         String originalOrientation = originalExif.getAttribute(ExifInterface.TAG_ORIENTATION);
 
-        Matrix rotationMatrix = new Matrix();
-        int rotationAngleInDegrees = getRotationInDegreesForOrientationTag(originalOrientation);
-        rotationMatrix.postRotate(rotationAngleInDegrees);
-
-        float ratioBitmap = (float) width / (float) height;
-        float ratioMax = (float) maxWidth / (float) maxHeight;
-
-        int finalWidth = maxWidth;
-        int finalHeight = maxHeight;
-
-        if (ratioBitmap > 1) {    
-            // LANDSCAPE
-            finalHeight = maxWidth;
-            finalWidth = (int) ((float) width * ((float) maxWidth / (float) height));
-        } else {
-            // PORTRAIT
-            finalWidth = maxWidth;
-            finalHeight = (int) ((float) height * ((float) maxWidth / (float) width));
-        }
-
-        // if (ratioMax > 1) {
-        //     finalWidth = (int) ((float) maxHeight * ratioBitmap);
-        // } else {
-        //     finalHeight = (int) ((float) maxWidth / ratioBitmap);
-        // }
-
-        Bitmap resized = Bitmap.createScaledBitmap(original, finalWidth, finalHeight, true);
-        resized = Bitmap.createBitmap(resized, 0, 0, finalWidth, finalHeight, rotationMatrix, true);
+        bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
 
         File imageDirectory = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
 
@@ -165,16 +138,16 @@ class Compression {
         int width = currentWidth;
         int height = currentHeight;
 
-        if (width > maxWidth) {
-            float ratio = ((float) maxWidth / width);
-            height = (int) (height * ratio);
-            width = maxWidth;
-        }
+        float ratioBitmap = (float) width / (float) height;
 
-        if (height > maxHeight) {
-            float ratio = ((float) maxHeight / height);
-            width = (int) (width * ratio);
-            height = maxHeight;
+        if (ratioBitmap > 1) {    
+            // LANDSCAPE
+            height = maxWidth;
+            width = (int) ((float) width * ((float) maxWidth / (float) height));
+        } else {
+            // PORTRAIT
+            width = maxWidth;
+            height = (int) ((float) height * ((float) maxWidth / (float) width));
         }
 
         return Pair.create(width, height);
