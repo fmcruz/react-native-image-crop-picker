@@ -135,22 +135,25 @@ class Compression {
     }
 
     private Pair<Integer, Integer> calculateTargetDimensions(int currentWidth, int currentHeight, int maxWidth, int maxHeight) {
-        int width = currentWidth;
-        int height = currentHeight;
+        int oldWidth = currentWidth;
+        int oldHeight = currentHeight;
 
-        float ratioBitmap = (float) width / (float) height;
+        int newWidth = 0;
+        int newHeight = 0;
+
+        float ratioBitmap = (float) oldWidth / (float) oldHeight;
 
         if (ratioBitmap > 1) {    
             // LANDSCAPE
-            height = maxWidth;
-            width = (int) ((float) width * ((float) maxWidth / (float) height));
+            newHeight = maxWidth;
+            newWidth =  (int) ((float) oldWidth * ((float) maxWidth / (float) oldHeight));
         } else {
             // PORTRAIT
-            width = maxWidth;
-            height = (int) ((float) height * ((float) maxWidth / (float) width));
+            newWidth = maxWidth;
+            newHeight =  (int) ((float) oldHeight * ((float) maxWidth / (float) oldWidth));
         }
 
-        return Pair.create(width, height);
+        return Pair.create(newWidth, newHeight);
     }
 
     synchronized void compressVideo(final Activity activity, final ReadableMap options, final String originalVideo, final String compressedVideo, final Promise promise) {
